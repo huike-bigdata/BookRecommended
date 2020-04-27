@@ -1,0 +1,76 @@
+import time
+
+import pandas as pd
+import numpy as np
+
+
+class DataLoader(object):
+
+    def getDataFrame(self, file_path, sep, encoding="utf-8", num=10000):
+        data = pd.read_csv(file_path, sep=sep, encoding=encoding)
+        if num == 0:
+            return data
+        else:
+            return data.head(num)
+
+    def processDataFrametoArray(self, dataframe, Ml="User-ID", Nl="ISBN"):
+        user_list = dataframe[Ml].unique()
+        # print(type(user_list))
+        # print(user_list)
+        # print(user_list[1])
+        # 所有不重复的用户
+
+        ISBN_list = dataframe[Nl].unique()
+        # 所有不重复的书籍
+
+        zero = np.zeros(shape=(len(user_list), len(ISBN_list)), dtype="int64")
+        # print(zero.shape)
+        # 空的array，预备放置每个用户对于每个书籍的评分
+        # print("len(user_list) is: {}".format(len(user_list)))
+        for u in range(len(user_list)):
+            # print("u is: {}".format(u))
+            for book in range(len(ISBN_list)):
+                # print("book is: {}".format(book))
+                # print("查找：user_list[u]: {}".format(int(user_list[u])))
+                # print("查找：ISBN_list[book]: {}".format(str(ISBN_list[book])))
+                zero[u, book] = self.getRating(dataframe, int(user_list[u]), str(ISBN_list[book]))
+            print("{} — 进度：{}%".format(time.strftime('%Y.%m.%d %H:%M:%S',time.localtime(time.time())),round(u / len(user_list), 4) * 100))
+        return zero
+
+    def getRating(self, dataframe, user_id, ISBN):
+        """
+        根据用户和ISBN找到用户对此书的评分
+        :param user_id:
+        :param ISBN:
+        :return:
+        """
+        # print("user_id is {}, ISBN is {}".format(user_id, ISBN))
+        rating = dataframe[(dataframe["User-ID"] == user_id) & (dataframe["ISBN"] == ISBN)]["Book-Rating"]
+        # print("rating is: {}".format(rating))
+        if len(rating) == 0:
+            # 没找到评分
+            return 0
+        else:
+            return int(rating)
+
+
+if __name__ == "__main__":
+    dataLoader = DataLoader()
+    # num: 获取的数据条数，决定了后边处理数据的时间，以及计算时间
+    ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=1000)
+    arr = dataLoader.processDataFrametoArray(ratings)
+    print(arr)
+    # print(ratings)
+    # print(ratings["User-ID"].dtype)
+    # print("评论数{}".format(+ratings["User-ID"].count()))
+    # print("用户数{}".format(+ratings["User-ID"].nunique()))
+    # print("用户数{}".format(len(ratings["User-ID"].unique())))
+    # print("评论数{}".format(+ratings["ISBN"].count()))
+    # print("书籍数{}".format(+ratings["ISBN"].nunique()))
+    # print("评论数{}".format(+ratings["Book-Rating"].count()))
+    # print("不重复的的评分{}".format(+ratings["Book-Rating"].nunique()))
+    # print(ratings.iloc[:,1])
+    # print("书籍数{}".format(ratings["ISBN"].unique().shape().Length))
+    # print(ratings[(ratings["User-ID"] == 276725) & (ratings["ISBN"] == "0155061224")]["Book-Rating"])
+    # print(ratings[ratings["ISBN"] == "052165615X"])
+    # print(int(dataLoader.getRating(ratings, 276725, "034545104X")))
