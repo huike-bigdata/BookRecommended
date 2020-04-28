@@ -19,7 +19,9 @@ class DataLoader(object):
         if num == 0:
             return data
         else:
-            return data.head(num)
+            # 随机选取
+            # return data.sample(num, axis=0)
+            return data.sample(num, axis=0)
 
     def processDataFrametoArray(self, dataframe, Ml="User-ID", Nl="ISBN"):
         """
@@ -50,8 +52,9 @@ class DataLoader(object):
                 # print("查找：user_list[u]: {}".format(int(user_list[u])))
                 # print("查找：ISBN_list[book]: {}".format(str(ISBN_list[book])))
                 zero[u, book] = self.getRating(dataframe, int(user_list[u]), str(ISBN_list[book]))
-            print("{} — 读取数据进度：{}%".format(time.strftime('%Y.%m.%d %H:%M:%S',time.localtime(time.time())),round(u / len(user_list), 4) * 100))
-        return zero,user_list,ISBN_list
+            print("{} — 读取数据进度：{}%".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time())),
+                                           round(u / len(user_list), 4) * 100))
+        return zero, user_list, ISBN_list
 
     def getRating(self, dataframe, user_id, ISBN):
         """
@@ -73,7 +76,7 @@ class DataLoader(object):
 if __name__ == "__main__":
     dataLoader = DataLoader()
     # num: 获取的数据条数，决定了后边处理数据的时间，以及计算时间
-    ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=1000)
+    ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=100)
     arr = dataLoader.processDataFrametoArray(ratings)
     print(arr)
     # print(ratings)
