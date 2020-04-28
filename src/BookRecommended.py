@@ -3,24 +3,31 @@ from pandas import np
 from DataLoader import DataLoader
 
 
-def fit(saveModel=True, saveuser_list=True, saveISBN_list=True):
+def fit(saveModel=True, saveuser_list=True, saveISBN_list=True, num=10):
     """
     加载并训练模型
     :param save:是否保存模型到本地
+    :param saveuser_list:是否保存用户列表到本地
+    :param savesaveISBN_list:是否保存书籍列表到本地
+    :param num:加载数据的条数
     :return:
     """
     dataLoader = DataLoader()
     # num: 获取的数据条数，决定了后边处理数据的时间，以及预测评分的时间
-    ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=10)
+    ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=num)
     R, user_list, ISBN_list = dataLoader.processDataFrametoArray(ratings)
     if saveModel:
         np.save("../Model/BookRecommendedModel.npy", R)
     if saveuser_list:
-        np.save("../Model/user_list.npy", R)
+        with open("../Model/user_list", "w+", encoding="UTF-8") as f:
+            f.write(str(user_list))
+    if saveISBN_list:
+        with open("../Model/ISBN_list", "w+", encoding="UTF-8") as f:
+            f.write(str(ISBN_list))
     return R, user_list, ISBN_list
 
 
-# 往模型添加用户评价，预测其他未评价的评分
+# 往模型添加新用户评价，用来预测其他未评价的评分
 def addRatings(R, user_list, ISBN_list, ISBNS, ratings, user_id=88888888):
     """
 
@@ -83,12 +90,49 @@ def LFM_grad_desc(R, K, max_iter, alpha=0.001, lamda=0.002):
     return P, Q, cost
 
 
-def getTopRatings(predR, user_id=88888888, topnum=10, duplicateremoval=True, ISBNS=None):
+def getTopRatings(predR, user_list, ISBN_list, user_id=88888888, topnum=3, duplicateremoval=True, ISBNS=None):
     """
-    获取用户评分最高的书籍（预测后）
+    获取用户评分最高的书籍（预测后的）与对应的预测评分
+    :param predR:
+    :param user_list:所有用户的列表
+    :param ISBN_list:所有书籍的ISBN列表
+    :param user_id:要提取最高评分与对应的的用户的id
+    :param topnum:提取数量
+    :param duplicateremoval:是否去重
+    :param ISBNS:
+    :return:返回被找到的几个书ISBN号码列表，评分列表。两个列表长度相等，相同位置一一对应
     """
-    print(predR[predR["User-ID"] == user_id])
-    pass
+
+    # 根据用户id找到对应的行索引
+    h_index = user_list.index(user_id)
+
+    # 根据行索引找到行（评分）
+    info = predR[h_index]
+
+    # 评分排序之后从小到大返回原本的列索引组成一个列表
+    sort_list = list(info.argsort())
+
+    # 反转为评分从到大到小，取出了前几个的索引
+    index = sort_list[::-1][:topnum]
+    # print(type(index))
+    # print(ISBN_list[index])
+
+    # 保存被提取的最高分的几个书的ISBN编号
+    ISBN_topN = []
+    for i in index:
+        ISBN_topN.append(ISBN_list[i])
+
+    # ISBN列表与评分列表，相应位置一一对应
+    return ISBN_topN, list(info[index])
+    # print(sort_list)
+    # print(type(sort_list))
+    # print(sort_list[::-1][:topnum])
+    # print(info[sort_list[::-1][:topnum]])
+    # print(type(list(info[sort_list[::-1][:topnum]])))
+    # print(predR[index])
+    # print(type(predR[index]))
+    # print(predR[index].argsort())
+    # print(type(predR[index].argsort()))
 
 
 if __name__ == "__main__":
@@ -107,25 +151,21 @@ if __name__ == "__main__":
     """
 
     # 训练模型
-    model, user_list, ISBN_list = fit()
-    print(model)
-    # print(type(model))
-    # # user_list
-    # print(user_list)
-    # print(type(user_list))
-    # print(ISBN_list)
-    # print(type(ISBN_list))
+    model, user_list, ISBN_list = fit(num=15)
 
-    # 使用模型
+    """这可以从本地读取模型与2个列表"""
+    print(model)
+
+    # 模拟增加的新用户
     newbooklist = ["034545104X", '0155061224', '0446520802', '052165615X', '0521795028']
-    newratinglist = [0, 2, 3, 0, 5]
+    newratinglist = [0, 5, 3, 7, 5]
 
     # 添加新用户
     R = addRatings(model, user_list, ISBN_list, newbooklist, newratinglist)
     print(R)
 
     # 预测
-    P,Q,cost=LFM_grad_desc(R, K=5, max_iter=500, alpha=0.001, lamda=0.002)
+    P, Q, cost = LFM_grad_desc(R, K=5, max_iter=500, alpha=0.001, lamda=0.002)
     print(P)
     print(Q)
     print(cost)
@@ -133,3 +173,6 @@ if __name__ == "__main__":
     print(R)
     print(predR)
 
+    # 取出单用户预测的TopN评分
+    A, B = getTopRatings(predR, user_list, ISBN_list, topnum=5)
+    print(A, B)
