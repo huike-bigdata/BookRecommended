@@ -14,13 +14,13 @@ class DataLoader(object):
             return data.head(num)
 
     def processDataFrametoArray(self, dataframe, Ml="User-ID", Nl="ISBN"):
-        user_list = dataframe[Ml].unique()
+        user_list = list(dataframe[Ml].unique())
         # print(type(user_list))
         # print(user_list)
         # print(user_list[1])
         # 所有不重复的用户
 
-        ISBN_list = dataframe[Nl].unique()
+        ISBN_list = list(dataframe[Nl].unique())
         # 所有不重复的书籍
 
         zero = np.zeros(shape=(len(user_list), len(ISBN_list)), dtype="int64")
@@ -35,7 +35,7 @@ class DataLoader(object):
                 # print("查找：ISBN_list[book]: {}".format(str(ISBN_list[book])))
                 zero[u, book] = self.getRating(dataframe, int(user_list[u]), str(ISBN_list[book]))
             print("{} — 进度：{}%".format(time.strftime('%Y.%m.%d %H:%M:%S',time.localtime(time.time())),round(u / len(user_list), 4) * 100))
-        return zero
+        return zero,user_list,ISBN_list
 
     def getRating(self, dataframe, user_id, ISBN):
         """
