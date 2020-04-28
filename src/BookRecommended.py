@@ -60,7 +60,6 @@ class BookBookRecommendedSystem(object):
         """
         zers = np.zeros(shape=(1, self.R.shape[1]))
         for i in range(len(ratings)):
-            print(type(ISBNS))
             zers[0][self.ISBN_list.index(ISBNS[i])] = ratings[i]
         self.R = np.append(self.R, zers, axis=0)
         self.user_list.append(user_id)
@@ -148,11 +147,13 @@ class BookBookRecommendedSystem(object):
 
 
 if __name__ == "__main__":
+    with open("conf.json", "r") as f:
+        conf = eval(f.read())
     # 图书推荐系统
     BRS = BookBookRecommendedSystem(K=5)
     print("{} — 开始训练/读取已训练的模型".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
     # 训练模型
-    BRS.fit(rating_num=40)
+    BRS.fit(rating_num=conf["rating_num"])
 
     """
     这里可以手动从本地读取已训练好的模型与2个列表
@@ -189,7 +190,7 @@ if __name__ == "__main__":
 
     print("{} — 开始预测".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
     # 预测
-    BRS.LFM_grad_desc(max_iter=1000, alpha=0.001, lamda=0.002)
+    BRS.LFM_grad_desc(max_iter=conf["max_iter"], alpha=0.001, lamda=0.002)
 
     print(BRS.cost)  # 输出损失函数
 
