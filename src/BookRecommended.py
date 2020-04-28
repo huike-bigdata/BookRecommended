@@ -99,7 +99,7 @@ def getTopRatings(predR, user_list, ISBN_list, user_id=88888888, topnum=3, dupli
     :param user_id:要提取最高评分与对应的的用户的id
     :param topnum:提取数量
     :param duplicateremoval:是否去重
-    :param ISBNS:
+    :param ISBNS:新用户评价的书籍列表，用于去重
     :return:返回被找到的几个书ISBN号码列表，评分列表。两个列表长度相等，相同位置一一对应
     """
 
@@ -113,17 +113,28 @@ def getTopRatings(predR, user_list, ISBN_list, user_id=88888888, topnum=3, dupli
     sort_list = list(info.argsort())
 
     # 反转为评分从到大到小，取出了前几个的索引
-    index = sort_list[::-1][:topnum]
+    index = sort_list[::-1]
     # print(type(index))
     # print(ISBN_list[index])
 
     # 保存被提取的最高分的几个书的ISBN编号
-    ISBN_topN = []
+    ISBN_topN = []  # 存放TopN的书籍ISBN号
+    index_a = []  # 存放TopN的书籍对应的索引
     for i in index:
-        ISBN_topN.append(ISBN_list[i])
+        if len(ISBN_topN) < topnum:
+            # 如果已保存的书籍仍小于想要提取的数量，则继续，否则退出循环
+            if duplicateremoval:
+                if ISBN_list[i] in ISBNS:
+                    print("*************")
+                    # 如果开启了去重，且当前书籍在此用户已经评价的书籍的列表里面，则不予认定为操作者想要去除的
+                    continue
+            index_a.append(i)
+            ISBN_topN.append(ISBN_list[i])
+        else:
+            break
 
     # ISBN列表与评分列表，相应位置一一对应
-    return ISBN_topN, list(info[index])
+    return ISBN_topN, list(info[index_a])
     # print(sort_list)
     # print(type(sort_list))
     # print(sort_list[::-1][:topnum])
@@ -174,5 +185,5 @@ if __name__ == "__main__":
     print(predR)
 
     # 取出单用户预测的TopN评分
-    A, B = getTopRatings(predR, user_list, ISBN_list, topnum=5)
+    A, B = getTopRatings(predR, user_list, ISBN_list, topnum=5, ISBNS=newbooklist)
     print(A, B)
