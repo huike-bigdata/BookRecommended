@@ -1,3 +1,6 @@
+import random
+import time
+
 from pandas import np
 
 from DataLoader import DataLoader
@@ -23,20 +26,20 @@ class BookBookRecommendedSystem(object):
         self.R = None
         self.user_list = None
         self.ISBN_list = None
-        self.predR=None
+        self.predR = None
 
-    def fit(self, saveModel=True, saveuser_list=True, saveISBN_list=True, num=10):
+    def fit(self, saveModel=True, saveuser_list=True, saveISBN_list=True, rating_num=10):
         """
         加载并训练模型
         :param save:是否保存模型到本地
         :param saveuser_list:是否保存用户列表到本地
         :param saveISBN_list:是否保存书籍列表到本地
-        :param num:加载数据的条数
+        :param rating_num:加载数据的条数
         :return:
         """
         dataLoader = DataLoader()
         # num: 获取的数据条数，决定了后边处理数据的时间，以及预测评分的时间
-        ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=num)
+        ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=rating_num)
         self.R, self.user_list, self.ISBN_list = dataLoader.processDataFrametoArray(ratings)
         if saveModel:
             np.save("../Model/BookRecommendedModel.npy", self.R)
@@ -57,6 +60,7 @@ class BookBookRecommendedSystem(object):
         """
         zers = np.zeros(shape=(1, self.R.shape[1]))
         for i in range(len(ratings)):
+            print(type(ISBNS))
             zers[0][self.ISBN_list.index(ISBNS[i])] = ratings[i]
         self.R = np.append(self.R, zers, axis=0)
         self.user_list.append(user_id)
@@ -97,9 +101,9 @@ class BookBookRecommendedSystem(object):
             # 提前结束迭代
             if self.cost < 0.0001:
                 break
-        self.predR = self.P.dot(self.Q)     #预测结果（ndarry）
+        self.predR = self.P.dot(self.Q)  # 预测结果（ndarry）
 
-    def getTopRatings(self,user_id=88888888, topnum=3, duplicateremoval=True, ISBNS=None):
+    def getTopRatings(self, user_id=88888888, topnum=3, duplicateremoval=True, ISBNS=None):
         """
         获取用户评分最高的书籍（预测后的）与对应的预测评分
         :param predR:
@@ -132,7 +136,6 @@ class BookBookRecommendedSystem(object):
                 # 如果已保存的书籍仍小于想要提取的数量，则继续，否则退出循环
                 if duplicateremoval:
                     if self.ISBN_list[i] in ISBNS:
-                        print("*************")
                         # 如果开启了去重，且当前书籍在此用户已经评价的书籍的列表里面，则不予认定为操作者想要去除的
                         continue
                 index_a.append(i)
@@ -147,37 +150,52 @@ class BookBookRecommendedSystem(object):
 if __name__ == "__main__":
     # 图书推荐系统
     BRS = BookBookRecommendedSystem(K=5)
-
+    print("{} — 开始训练/读取已训练的模型".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
     # 训练模型
-    BRS.fit(num=15)
+    BRS.fit(rating_num=40)
 
     """
-    这里可以手动从本地读取模型与2个列表
+    这里可以手动从本地读取已训练好的模型与2个列表
     事例：
     new = np.load("../Model/BookRecommendedModel.npy")
-    user_list = np.load("../Model/user_list")
-    ISBN_list = np.load("../Model/ISBN_list")
-    BRS.R=new
-    BRS.user_list=user_list
-    BRS.ISBN_list=ISBN_list
+    with open("../Model/user_list", "r") as f:
+        user_list = eval(f.read())
+    with open("../Model/ISBN_list", "r") as f:
+        ISBN_list = eval(f.read())
+    BRS.R = new
+    BRS.user_list = user_list
+    BRS.ISBN_list = ISBN_list
     """
-    print(BRS.R)
+
+    # new = np.load("../Model/BookRecommendedModel.npy")
+    # with open("../Model/user_list", "r") as f:
+    #     user_list = eval(f.read())
+    # with open("../Model/ISBN_list", "r") as f:
+    #     ISBN_list = eval(f.read())
+    # BRS.R = new
+    # BRS.user_list = user_list
+    # BRS.ISBN_list = ISBN_list
+
+    # print(BRS.R)        #输出模型
 
     # 模拟增加的新用户
-    newbooklist = ["034545104X", '0155061224', '0446520802', '052165615X', '0521795028']
+    # newbooklist = ["034545104X", '0155061224', '0446520802', '052165615X', '0521795028']
+    newbooklist = random.sample(BRS.ISBN_list, 5)
     newratinglist = [0, 5, 3, 7, 5]
 
     # 添加新用户
     BRS.addRatings(newbooklist, newratinglist)
-    print(BRS.R)
+    # print(BRS.R)
 
+    print("{} — 开始预测".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
     # 预测
-    BRS.LFM_grad_desc(max_iter=500, alpha=0.001, lamda=0.002)
+    BRS.LFM_grad_desc(max_iter=1000, alpha=0.001, lamda=0.002)
 
-    print(BRS.cost)     # 输出损失函数
+    print(BRS.cost)  # 输出损失函数
 
-    print(BRS.predR)    # 输出预测值
+    # print(BRS.predR)  # 输出预测值
 
     # 取出单用户预测的TopN评分
-    A, B = BRS.getTopRatings(topnum=5, ISBNS=newbooklist)
-    print("推荐您阅读：{}".format(A), B)
+    ISBN_topN, Rating_topN = BRS.getTopRatings(topnum=5, ISBNS=newbooklist)
+    print("{} — 预测完成".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
+    print("推荐您阅读：{}".format(ISBN_topN), Rating_topN)
