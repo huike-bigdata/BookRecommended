@@ -7,6 +7,14 @@ import numpy as np
 class DataLoader(object):
 
     def getDataFrame(self, file_path, sep, encoding="utf-8", num=10000):
+        """
+        读取文件为pd.dataframe
+        :param file_path:
+        :param sep:分隔符
+        :param encoding:
+        :param num:读取前多少条，如果为0则返回所有
+        :return:
+        """
         data = pd.read_csv(file_path, sep=sep, encoding=encoding)
         if num == 0:
             return data
@@ -14,6 +22,14 @@ class DataLoader(object):
             return data.head(num)
 
     def processDataFrametoArray(self, dataframe, Ml="User-ID", Nl="ISBN"):
+        """
+        将pd.dataframe转为np.darray
+        :param dataframe:
+        :param Ml:用户列
+        :param Nl:书籍列
+        :return:返回的darray，行为每个用户给所有书籍的评分，列为用户给每个书籍的评分
+        """
+
         user_list = list(dataframe[Ml].unique())
         # print(type(user_list))
         # print(user_list)
@@ -34,7 +50,7 @@ class DataLoader(object):
                 # print("查找：user_list[u]: {}".format(int(user_list[u])))
                 # print("查找：ISBN_list[book]: {}".format(str(ISBN_list[book])))
                 zero[u, book] = self.getRating(dataframe, int(user_list[u]), str(ISBN_list[book]))
-            print("{} — 进度：{}%".format(time.strftime('%Y.%m.%d %H:%M:%S',time.localtime(time.time())),round(u / len(user_list), 4) * 100))
+            print("{} — 读取数据进度：{}%".format(time.strftime('%Y.%m.%d %H:%M:%S',time.localtime(time.time())),round(u / len(user_list), 4) * 100))
         return zero,user_list,ISBN_list
 
     def getRating(self, dataframe, user_id, ISBN):
