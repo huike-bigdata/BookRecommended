@@ -1,7 +1,9 @@
 import random
 import time
 
-from pandas import np
+# from pandas import np
+import numpy as np
+import pandas as pd
 
 from DataLoader import DataLoader
 
@@ -28,7 +30,8 @@ class BookBookRecommendedSystem(object):
         self.ISBN_list = None
         self.predR = None
 
-    def fit(self, saveModel=True, saveuser_list=True, saveISBN_list=True, rating_num=10):
+    def fit(self, saveModel=True, saveuser_list=True, saveISBN_list=True, rating_num=10,
+            ratingsFile="../data/BX-Book-Ratings.csv"):
         """
         加载并训练模型
         :param save:是否保存模型到本地
@@ -39,7 +42,7 @@ class BookBookRecommendedSystem(object):
         """
         dataLoader = DataLoader()
         # num: 获取的数据条数，决定了后边处理数据的时间，以及预测评分的时间
-        ratings = dataLoader.getDataFrame("../data/BX-Book-Ratings.csv", ";", "utf-8", num=rating_num)
+        ratings = dataLoader.getDataFrame(ratingsFile, ";", "utf-8", num=rating_num)
         self.R, self.user_list, self.ISBN_list = dataLoader.processDataFrametoArray(ratings)
         if saveModel:
             np.save("../Model/BookRecommendedModel.npy", self.R)
@@ -146,17 +149,75 @@ class BookBookRecommendedSystem(object):
         return ISBN_topN, list(info[index_a])
 
 
+def nowTime():
+    return time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))
+
+
+def loadModel(TrainingOrLoad):
+    if TrainingOrLoad == "T":
+        print("{} — 开始训练".format(nowTime()))
+        # 训练模型
+        BRS.fit(rating_num=conf["rating_num"])
+    elif TrainingOrLoad == "L":
+        print("{} — 开始读取已训练完成的模型".format(nowTime()))
+        oldModel = np.load("../Model/BookRecommendedModel.npy")
+        with open("../Model/user_list", "r") as f:
+            user_list = eval(f.read())
+        with open("../Model/ISBN_list", "r") as f:
+            ISBN_list = eval(f.read())
+        BRS.R = oldModel
+        BRS.user_list = user_list
+        BRS.ISBN_list = ISBN_list
+    else:
+        print("错误，请重现选择：TrainingOrLoad若为T则重新训练，为L则加载已训练好的模型")
+
+
+def getBookInfo(booksInfo, bookISBNList):
+    """
+    根据书籍文件信息和ISBN列表，提取出封面作者书名等信息并返回
+    :param booksInfo:
+    :param bookISBNList:
+    :return:
+    """
+    print("当前一轮{}个ISBN".format(len(bookISBNList)))
+    bookPicList = []
+    bookAuthorList = []
+    bookTitleList = []
+    for bookISBN in bookISBNList:
+        bookInfo = booksInfo[booksInfo["ISBN"] == bookISBN]
+        print(bookISBN)
+        print(bookInfo)
+        try:
+            bookPicList.append(list(bookInfo["Image-URL-L"].values)[0])
+            bookAuthorList.append(list(bookInfo["Book-Author"].values)[0])
+            bookTitleList.append(list(bookInfo["Book-Title"].values)[0])
+        except IndexError:
+            print("***********没找到这个书，重新再抽书***********")
+            # 如果失误，则再次随机抽几个
+            return getBookInfo(booksInfo, random.sample(BRS.ISBN_list, len(bookISBNList)))
+
+    else:
+        return bookTitleList, bookAuthorList, bookPicList, bookISBNList
+
+
 if __name__ == "__main__":
     with open("conf.json", "r") as f:
         conf = eval(f.read())
+    # with open("../data/BX-Books.csv") as f:
+    # booksInfo = pd.read_csv("../data/BX-Books.csv", sep="\";\"", encoding="utf-8")
+    booksInfo = pd.read_csv("../data/BX-Books.csv", sep=";", encoding="utf-8")
+
+    # 根据配置文件选择重新训练还是加载已经训练好的模型
+    # T为重新训练，L为加载已训练好的模型
     # 图书推荐系统
     BRS = BookBookRecommendedSystem(K=5)
-    print("{} — 开始训练/读取已训练的模型".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
-    # 训练模型
-    BRS.fit(rating_num=conf["rating_num"])
+    print("{} — 开始训练/读取已训练的模型".format(nowTime()))
+
+    # 加载模型（内部会根据配置文件选择重新训练还是加载已有的模型）
+    loadModel(conf["TrainingOrLoad"])
 
     """
-    这里可以手动从本地读取已训练好的模型与2个列表
+    这里可以手动从本地读取已训练好的模型与2个列表（已封装）
     事例：
     new = np.load("../Model/BookRecommendedModel.npy")
     with open("../Model/user_list", "r") as f:
@@ -168,27 +229,24 @@ if __name__ == "__main__":
     BRS.ISBN_list = ISBN_list
     """
 
-    # new = np.load("../Model/BookRecommendedModel.npy")
-    # with open("../Model/user_list", "r") as f:
-    #     user_list = eval(f.read())
-    # with open("../Model/ISBN_list", "r") as f:
-    #     ISBN_list = eval(f.read())
-    # BRS.R = new
-    # BRS.user_list = user_list
-    # BRS.ISBN_list = ISBN_list
-
     # print(BRS.R)        #输出模型
 
     # 模拟增加的新用户
     # newbooklist = ["034545104X", '0155061224', '0446520802', '052165615X', '0521795028']
+    # 随机选择几本书让用户评分
     newbooklist = random.sample(BRS.ISBN_list, 5)
+    bookInfo = getBookInfo(booksInfo, newbooklist)
+    print("呈现给用户的书籍的ISBN为：{}".format(bookInfo[3]))
+    print("呈现给用户的书籍的名字为：{}".format(bookInfo[0]))
+    print("呈现给用户的书籍的作者为：{}".format(bookInfo[1]))
+    print("呈现给用户的书籍的封面为：{}".format(bookInfo[2]))
     newratinglist = [0, 5, 3, 7, 5]
 
-    # 添加新用户
+    # 添加新用户到模型中
     BRS.addRatings(newbooklist, newratinglist)
     # print(BRS.R)
 
-    print("{} — 开始预测".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
+    print("{} — 开始预测".format(nowTime()))
     # 预测
     BRS.LFM_grad_desc(max_iter=conf["max_iter"], alpha=0.001, lamda=0.002)
 
@@ -198,5 +256,5 @@ if __name__ == "__main__":
 
     # 取出单用户预测的TopN评分
     ISBN_topN, Rating_topN = BRS.getTopRatings(topnum=5, ISBNS=newbooklist)
-    print("{} — 预测完成".format(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time()))))
+    print("{} — 预测完成".format(nowTime()))
     print("推荐您阅读：{}".format(ISBN_topN), Rating_topN)
