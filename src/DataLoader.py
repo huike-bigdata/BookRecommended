@@ -9,9 +9,9 @@ class DataLoader(object):
     def getDataFrame(self, file_path, sep, encoding="utf-8", num=10000):
         """
         读取文件为pd.dataframe
-        :param file_path:
+        :param file_path: 用户对书籍的评分csv文件
         :param sep:分隔符
-        :param encoding:
+        :param encoding: 文件编码
         :param num:读取前多少条，如果为0则返回所有
         :return:
         """
@@ -20,7 +20,6 @@ class DataLoader(object):
             return data
         else:
             # 随机选取
-            # return data.sample(num, axis=0)
             return data.sample(num, axis=0)
 
     def processDataFrametoArray(self, dataframe, Ml="User-ID", Nl="ISBN"):
